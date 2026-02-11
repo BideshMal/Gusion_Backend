@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: Gusion
+
+  # --------------------------------------------------------
+  #  DATA INITIALIZATION (Crucial for data.sql)
+  # --------------------------------------------------------
+  # 1. Force data.sql to run even on Postgres
+  sql:
+    init:
+      mode: always
+
+  # 2. Wait for Hibernate to create tables BEFORE running data.sql
+  jpa:
+    defer-datasource-initialization: true
+
+    hibernate:
+      ddl-auto: create
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        default_schema: public
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+  # --------------------------------------------------------
+  #  HYBRID DATABASE CONFIGURATION (Local + Railway)
+  # --------------------------------------------------------
+  datasource:
+    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:gusion}
+    username: ${PGUSER:gusion}
+    password: ${PGPASSWORD:gusion_secret}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+
+  # Docker Compose - auto-start Postgres locally
+  docker:
+    compose:
+      enabled: ${DOCKER_COMPOSE_ENABLED:true}
+      file: compose.yaml
+
+  # Spring AI
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:sk-dummy-key-for-local-dev-12345}
+      chat:
+        options:
+          model: gpt-4o-mini
+          temperature: 0.3
+
+server:
+  port: ${PORT:8080}
