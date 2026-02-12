@@ -144,6 +144,58 @@ The project includes a fully interactive Swagger UI for testing. Once the app is
 **Rationale:** Ensures absolute security against malicious code and prevents one student's submission from impacting another's resources.
 
 ---
+🏗️ System Architecture Diagram (Detailed)
+This diagram represents the Request-Response Lifecycle of Gusion, specifically highlighting the asynchronous nature of the AI Mentor.
+
+
+    User((Student)) -->|1. Submit Code| API[Spring Boot REST API]
+    API -->|2. Persist Submission| DB[(PostgreSQL 16)]
+    API -->|3. Trigger Judge| Judge[Docker Judge Service]
+    
+    subgraph "Isolated Sandbox Environment"
+        Judge -->|4. Create Container| Docker[Ephemeral Docker Container]
+        Docker -->|5. Run Test Cases| Result{Evaluation}
+    end
+    
+    Result -->|Success| API
+    Result -->|Failure: WA/RE/TLE| API
+    
+    subgraph "AI Mentor Scaffolding"
+        API -->|6. If Failure: Analyze| SpringAI[Spring AI Framework]
+        SpringAI -->|7. Contextual Prompt| OpenAI[GPT-4o-mini]
+        OpenAI -->|8. Structured Hints| SpringAI
+        SpringAI -->|9. Store Hints| DB
+    end
+    
+    API -->|10. Reveal Level-based Hints| User
+
+    
+📄 Design Document: Gusion AI Mentor
+1. System Overview
+Gusion is a specialized Online Judge designed for educational environments. Unlike competitive programming platforms that focus only on performance, Gusion focuses on pedagogical guidance. It uses a containerized execution model for security and a Large Language Model (LLM) for personalized student feedback.
+
+2. Component Breakdown
+Judge Core: Uses the Docker Engine API to pull images (e.g., openjdk:21-slim) and execute student code with hard resource limits (512MB RAM, 1s CPU time).
+
+AI Analysis Service: Built on Spring AI ChatClient. It uses a "Prompt Template" that includes the problem description, the student's code, and the specific error message to generate non-spoiler hints.
+
+Persistence Layer: PostgreSQL manages the relational state of problems, users, and submissions. It ensures that if a student revisits a problem, their previous AI hints are immediately available without re-triggering the LLM (cost-saving).
+
+3. Key Design Decisions (ADRs)
+Decision: Use Virtual Threads (Project Loom) for the Judge Service.
+
+Rationale: Judging is I/O intensive (waiting for Docker containers). Virtual threads allow Gusion to handle hundreds of concurrent submissions on a single "Nano" instance without thread exhaustion.
+
+Decision: Progressive Disclosure for AI Hints.
+
+Rationale: To prevent students from bypassing the thinking process, hints are locked behind "Level" thresholds. A student must wait or attempt again before seeing higher-level hints.
+
+4. Security Model
+Resource Exhaustion: Protected by Docker Cgroups (prevents Fork Bombs).
+
+Data Privacy: No personal student data is sent to OpenAI; only the code and the error are transmitted for analysis.
+
+Network Security: The judge containers run with --network none to prevent students from making outbound requests or accessing the internal database.
 
 ### 🌟 Acknowledgments
 
