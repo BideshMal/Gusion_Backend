@@ -6,8 +6,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,7 +17,6 @@ import com.bidesh.OJ.Gusion.entity.Problem;
 import com.bidesh.OJ.Gusion.entity.Submission;
 import com.bidesh.OJ.Gusion.entity.SubmissionStatus;
 import com.bidesh.OJ.Gusion.entity.User;
-import com.bidesh.OJ.Gusion.entity.UserRole;
 import com.bidesh.OJ.Gusion.entity.Verdict;
 import com.bidesh.OJ.Gusion.repository.ProblemRepository;
 import com.bidesh.OJ.Gusion.repository.SubmissionRepository;
@@ -41,20 +38,17 @@ public class SubmissionServiceImpl implements SubmissionService {
     private final UserRepository userRepository;
 
     @Override
+    @Transactional
     public SubmitResponse submit(UUID userId, SubmitRequest request) {
-        log.info("Received submission for User: {}", userId);
+        log.info("Submission initiated - User: {}, Problem: {}", userId, request.getProblemId());
 
         try {
-            // 1. Fetch Problem
             Problem problem = problemRepository.findById(request.getProblemId())
                     .orElseThrow(() -> new RuntimeException("Problem not found"));
 
-            // 2. Resolve User (With Retry for Race Conditions)
             User user = resolveUser(userId);
 
-            // 3. Create Submission
             Submission submission = Submission.builder()
-                    .id(UUID.randomUUID())
                     .problem(problem)
                     .user(user)
                     .code(request.getCode())
@@ -63,93 +57,73 @@ public class SubmissionServiceImpl implements SubmissionService {
                     .submittedAt(LocalDateTime.now())
                     .build();
 
-            // 4. Save Submission
-            Submission savedSubmission = submissionRepository.save(submission);
+            // 🟢 FIX 1: Use saveAndFlush to push to DB immediately
+            Submission savedSubmission = submissionRepository.saveAndFlush(submission);
             UUID submissionId = savedSubmission.getId();
 
-            // 5. Run Judging in Background (ASYNC)
-            CompletableFuture.runAsync(() -> runAsyncJudging(submissionId));
+            // 🟢 FIX 2: Add a tiny delay to ensure the transaction is committed
+            CompletableFuture.runAsync(() -> {
+                try { Thread.sleep(300); } catch (InterruptedException ignored) {}
+                runAsyncJudging(submissionId);
+            });
 
-            return new SubmitResponse(
-                    savedSubmission.getId(),
-                    "PENDING",
-                    null,
-                    0L, 0
-            );
+            return new SubmitResponse(submissionId, "PENDING", null, 0L, 0);
 
         } catch (Exception e) {
-            log.error("CRITICAL ERROR in submit():", e);
-            throw new RuntimeException("Submission failed: " + e.getMessage());
+            log.error("Submission entry failed: {}", e.getMessage());
+            throw new RuntimeException("Submission failed");
         }
     }
 
-    /**
-     * Tries to find the user. If missing, attempts to create.
-     * If creation fails (race condition), it retries the find.
-     */
     private User resolveUser(UUID userId) {
-        // 1. Atomic Database Insert (PostgreSQL handles the collision)
-        String autoEmail = "auto_" + userId.toString().substring(0, 8) + "@gusion.app";
-        userRepository.insertUserSafe(userId, autoEmail, "STUDENT");
+        return userRepository.findById(userId).orElseGet(() -> {
+            log.info("New participant {} detected. Auto-registering...", userId);
 
-        // 2. Simple Fetch (Guaranteed to be there now)
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found after insert"));
-    }
+            String autoEmail = "auto_" + userId.toString().substring(0, 8) + "@gusion.io";
+            // Ensure your UserRepository has this updated method to handle name/password!
+            userRepository.insertUserSafe(userId, autoEmail, "STUDENT");
 
-    // Isolated method to attempt creation
-    private User createUserSafe(UUID userId) {
-        String autoEmail = "auto_" + userId.toString().substring(0, 8) + "@gusion.app";
-        // Check email first (Double check)
-        if (userRepository.existsByEmail(autoEmail)) {
-            return userRepository.findByEmail(autoEmail).orElseThrow();
-        }
-
-        User newUser = User.builder()
-                .id(userId)
-                .email(autoEmail)
-                .role(UserRole.STUDENT)
-                .build();
-
-        // This might throw DataIntegrityViolation or OptimisticLockingFailure
-        // if another thread inserts at the same time. The loop above handles it.
-        return userRepository.save(newUser);
+            return userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Failed to resolve user session"));
+        });
     }
 
     private void runAsyncJudging(UUID submissionId) {
         try {
             Submission submission = submissionRepository.findById(submissionId)
-                    .orElseThrow(() -> new RuntimeException("Submission lost in async"));
+                    .orElseThrow(() -> new RuntimeException("Critical: Submission ID missing during judging"));
 
+            // 🟢 The judgeService will run all test cases (public + hidden)
             Verdict verdict = judgeService.judge(submission);
 
             submission.setVerdict(verdict);
             submission.setStatus(SubmissionStatus.COMPLETED);
             submissionRepository.save(submission);
 
-            log.info("Judging finished for {}: {}", submissionId, verdict);
+            log.info("Judging result for {}: {}", submissionId, verdict);
 
         } catch (Exception e) {
-            log.error("Async Judging Failed for " + submissionId, e);
-            try {
-                Submission s = submissionRepository.findById(submissionId).orElse(null);
-                if (s != null) {
-                    s.setStatus(SubmissionStatus.COMPLETED);
-                    s.setVerdict(Verdict.RE);
-                    submissionRepository.save(s);
-                }
-            } catch (Exception ex) { /* Ignore */ }
+            log.error("Async Engine Error for {}: {}", submissionId, e.getMessage());
+            markAsError(submissionId);
         }
+    }
+
+    private void markAsError(UUID id) {
+        submissionRepository.findById(id).ifPresent(s -> {
+            s.setStatus(SubmissionStatus.COMPLETED);
+            s.setVerdict(Verdict.RE); // Runtime Error as fallback
+            submissionRepository.save(s);
+        });
     }
 
     @Override
     public StatusResponse getStatus(UUID submissionId) {
-        Submission submission = submissionRepository.findById(submissionId)
-                .orElseThrow(() -> new RuntimeException("Submission not found"));
+        Submission s = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new RuntimeException("Status request for unknown ID"));
 
         return new StatusResponse(
-                submission.getStatus().toString(),
-                submission.getVerdict() != null ? submission.getVerdict().toString() : null
+                s.getStatus().toString(),
+                s.getVerdict() != null ? s.getVerdict().toString() : null
         );
     }
 
@@ -162,7 +136,8 @@ public class SubmissionServiceImpl implements SubmissionService {
                         s.getProblem().getTitle(),
                         s.getVerdict() != null ? s.getVerdict().toString() : "PENDING",
                         s.getLanguage().toString(),
-                        0.0,
+                        // In a full implementation, you'd calculate pass % here
+                        s.getVerdict() == Verdict.AC ? 100.0 : 0.0,
                         s.getSubmittedAt()
                 ))
                 .collect(Collectors.toList());

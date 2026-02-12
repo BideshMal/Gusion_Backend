@@ -40,4 +40,14 @@ public class AIAnalysis {
 
     @Column(name = "suggestion", columnDefinition = "TEXT")
     private String suggestion;
+
+    // 🟢 ADD THESE THREE FIELDS TO FIX THE ERRORS IN AnalysisServiceImpl
+    @Column(columnDefinition = "TEXT")
+    private String hintLevel1;
+
+    @Column(columnDefinition = "TEXT")
+    private String hintLevel2;
+
+    @Column(columnDefinition = "TEXT")
+    private String hintLevel3;
 }

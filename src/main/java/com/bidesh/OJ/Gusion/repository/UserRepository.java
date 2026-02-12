@@ -11,13 +11,18 @@ import com.bidesh.OJ.Gusion.entity.User;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
+
     Optional<User> findByEmail(String email);
 
-    // This was the missing method causing the error!
     boolean existsByEmail(String email);
 
+    // 🟢 CRITICAL FIX: Added 'name' and 'password' columns with default values
     @Modifying
     @Transactional
-    @Query(value = "INSERT INTO users (id, email, role) VALUES (:id, :email, :role) ON CONFLICT (id) DO NOTHING", nativeQuery = true)
+    @Query(value = """
+        INSERT INTO users (id, email, role, name, password) 
+        VALUES (:id, :email, :role, 'System User', 'default123') 
+        ON CONFLICT (id) DO NOTHING
+        """, nativeQuery = true)
     void insertUserSafe(UUID id, String email, String role);
 }

@@ -5,5 +5,6 @@ public enum Verdict {
     WA,   // Wrong Answer
     TLE,  // Time Limit Exceeded
     RE,   // Runtime Error
-    CE    // Compilation Error
+    CE,    // Compilation Error
+    SE     //System Error
 }

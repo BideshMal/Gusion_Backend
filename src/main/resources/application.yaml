@@ -43,7 +43,7 @@ spring:
   # Spring AI
   ai:
     openai:
-      api-key: ${OPENAI_API_KEY:sk-dummy-key-for-local-dev-12345}
+      api-key: ${OPENAI_API_KEY}
       chat:
         options:
           model: gpt-4o-mini

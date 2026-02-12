@@ -1,7 +1,9 @@
 package com.bidesh.OJ.Gusion.controller;
 
+import java.util.List;
 import java.util.Map;
 
+import com.bidesh.OJ.Gusion.dto.testcase.TestCaseResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -66,5 +68,10 @@ public class ProblemController {
             @PathVariable Long id,
             @Valid @RequestBody TestCaseRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(problemService.addTestCase(id, request));
+    }
+
+    @GetMapping("/{id}/testcases")
+    public ResponseEntity<List<TestCaseResponse>> getTestCases(@PathVariable Long id) {
+        return ResponseEntity.ok(problemService.getTestCases(id));
     }
 }

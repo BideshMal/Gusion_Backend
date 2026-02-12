@@ -3,6 +3,7 @@ package com.bidesh.OJ.Gusion.service.impl;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.bidesh.OJ.Gusion.dto.testcase.TestCaseResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -55,9 +56,9 @@ public class ProblemServiceImpl implements ProblemService {
                 .difficulty(request.getDifficulty())
                 .cpuLimitMs(request.getCpuLimitMs() != null ? request.getCpuLimitMs() : 1000)
                 .memoryLimitKb(request.getMemoryLimitKb() != null ? request.getMemoryLimitKb() : 256000)
-                .starterCode("") 
+                .starterCode("")
                 .build();
-        
+
         problem = problemRepository.save(problem);
         return toResponse(problem);
     }
@@ -67,14 +68,14 @@ public class ProblemServiceImpl implements ProblemService {
     public ProblemResponse update(Long id, ProblemRequest request) {
         Problem problem = problemRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Problem not found: " + id));
-        
+
         problem.setSlug(request.getSlug());
         problem.setDescription(request.getDescription());
         problem.setDifficulty(request.getDifficulty());
-        
+
         if (request.getCpuLimitMs() != null) problem.setCpuLimitMs(request.getCpuLimitMs());
         if (request.getMemoryLimitKb() != null) problem.setMemoryLimitKb(request.getMemoryLimitKb());
-        
+
         problem = problemRepository.save(problem);
         return toResponse(problem);
     }
@@ -93,17 +94,17 @@ public class ProblemServiceImpl implements ProblemService {
     public TestCase addTestCase(Long problemId, TestCaseRequest request) {
         Problem problem = problemRepository.findById(problemId)
                 .orElseThrow(() -> new IllegalArgumentException("Problem not found: " + problemId));
-        
+
         TestCase testCase = TestCase.builder()
                 .problem(problem)
                 // ✅ FIX: DTO uses 'inputUrl', Entity uses 'input'
-                .input(request.getInputUrl())       
+                .input(request.getInput())
                 // ✅ FIX: DTO uses 'outputUrl', Entity uses 'expectedOutput'
-                .expectedOutput(request.getOutputUrl())
+                .expectedOutput(request.getExpectedOutput())
                 // ✅ FIX: Null check for boolean
                 .isHidden(request.getIsHidden() != null ? request.getIsHidden() : false)
                 .build();
-        
+
         return testCaseRepository.save(testCase);
     }
 
@@ -137,5 +138,20 @@ public class ProblemServiceImpl implements ProblemService {
                 }
             }
             """.formatted(slug);
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public List<TestCaseResponse> getTestCases(Long problemId) {
+        Problem problem = problemRepository.findById(problemId)
+                .orElseThrow(() -> new IllegalArgumentException("Problem not found: " + problemId));
+
+        return problem.getTestCases().stream()
+                .map(tc -> TestCaseResponse.builder()
+                        .id(tc.getId())
+                        .input(tc.getInput())
+                        .expectedOutput(tc.getExpectedOutput())
+                        .isHidden(tc.getIsHidden() != null ? tc.getIsHidden() : false)
+                        .build())
+                .collect(Collectors.toList());
     }
 }

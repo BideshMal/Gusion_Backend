@@ -7,7 +7,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
 import java.util.UUID;
 
 @RestController
@@ -29,7 +28,13 @@ public class AIController {
         SseEmitter emitter = new SseEmitter(60_000L);
         analysisService.streamHint(problemId, level)
                 .subscribe(
-                        chunk -> { try { emitter.send(chunk); } catch (Exception ex) { emitter.completeWithError(ex); } },
+                        chunk -> {
+                            try {
+                                emitter.send(chunk);
+                            } catch (Exception ex) {
+                                emitter.completeWithError(ex);
+                            }
+                        },
                         emitter::completeWithError,
                         emitter::complete
                 );

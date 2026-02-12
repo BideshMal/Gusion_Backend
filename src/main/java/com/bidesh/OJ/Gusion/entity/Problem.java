@@ -1,64 +1,98 @@
 package com.bidesh.OJ.Gusion.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import jakarta.persistence.*;
+import lombok.*;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonIgnore; // ✅ Import this
-
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 @Entity
 @Table(name = "problems")
-@Data
-@Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Problem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
-    private String slug;
-
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String title;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(nullable = false, unique = true)
+    private String slug;
+
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String description;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Difficulty difficulty;
 
-    private Integer cpuLimitMs;
-    private Integer memoryLimitKb;
+    @Builder.Default
+    @Column(name = "cpu_limit_ms")
+    private Integer cpuLimitMs = 1000;
 
-    @Column(columnDefinition = "TEXT")
+    @Builder.Default
+    @Column(name = "memory_limit_kb")
+    private Integer memoryLimitKb = 256000;
+
+    @Column(name = "starter_code", columnDefinition = "TEXT")
     private String starterCode;
 
-    // ✅ CRITICAL FIX: Stop the infinite loop
-    @JsonIgnore 
-    @OneToMany(mappedBy = "problem", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Submission> submissions = new ArrayList<>();
+    // 🟢 FIXED: This will now map correctly to your DB
+    @Column(name = "reference_solution", columnDefinition = "TEXT")
+    private String referenceSolution;
 
-    // ✅ CRITICAL FIX: Keep the payload light
-    @JsonIgnore 
     @OneToMany(mappedBy = "problem", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @ToString.Exclude
+    @JsonManagedReference
     private List<TestCase> testCases = new ArrayList<>();
 }
+//public class Problem {
+//
+//    @Id
+//    @GeneratedValue(strategy = GenerationType.IDENTITY)
+//    private Long id;
+//
+//    @Column(nullable = false, unique = true)
+//    private String title;
+//
+//    @Column(nullable = false, unique = true)
+//    private String slug;
+//
+//    @Column(columnDefinition = "TEXT", nullable = false)
+//    private String description;
+//
+//    // 🛑 FIX 1: Use the actual Difficulty Enum (not String)
+//    @Enumerated(EnumType.STRING)
+//    @Column(nullable = false)
+//    private Difficulty difficulty;
+//
+//    // 🛑 FIX 2: Add @Builder.Default to stop the "initializing expression" warnings
+//    @Builder.Default
+//    @Column(name = "cpu_limit_ms")
+//    private Integer cpuLimitMs = 1000;
+//
+//    // 🛑 FIX 2: Add @Builder.Default to stop the "initializing expression" warnings
+//    @Builder.Default
+//    @Column(name = "memory_limit_kb")
+//    private Integer memoryLimitKb = 256000;
+//
+//    @Column(name = "starter_code", columnDefinition = "TEXT")
+//    private String starterCode;
+//
+//    // 🛑 FIX 3: Keep the Infinite Loop protections (Exclude + JsonIgnore)
+//    @OneToMany(mappedBy = "problem", cascade = CascadeType.ALL, orphanRemoval = true)
+//    @Builder.Default
+//    @ToString.Exclude
+//    @com.fasterxml.jackson.annotation.JsonManagedReference // 🟢 ADD THIS
+//    private List<TestCase> testCases = new ArrayList<>();
+//
+//    @Column(columnDefinition = "TEXT")
+//    private String referenceSolution;
+//}

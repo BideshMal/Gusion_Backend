@@ -1,5 +1,6 @@
 package com.bidesh.OJ.Gusion.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -30,18 +31,16 @@ public class TestCase {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "problem_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonBackReference // 🟢 ADD THIS
     private Problem problem;
 
-    // ✅ Changed from URL to raw Text (Matches data.sql)
     @Column(columnDefinition = "TEXT", nullable = false)
     private String input;
 
-    // ✅ Changed from URL to raw Text (Matches JudgeService)
     @Column(name = "expected_output", columnDefinition = "TEXT", nullable = false)
     private String expectedOutput;
 
-    // Default to false if not provided
     @Builder.Default
     @Column(name = "is_hidden")
-    private Boolean isHidden = false; 
+    private Boolean isHidden = false;
 }
