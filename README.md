@@ -2,6 +2,8 @@
 
 # 🛡️ Gusion: The AI-Powered "Mentor" Online Judge
 
+**Deployed Link** https://conceptual-datha-personal00abhi-6944df08.koyeb.app
+
 **Theme:** AI-Powered Online Education & Automated Hiring
 
 **Submission:** Spring Boot Cohort 4.0 Hackathon (Feb 2026)
