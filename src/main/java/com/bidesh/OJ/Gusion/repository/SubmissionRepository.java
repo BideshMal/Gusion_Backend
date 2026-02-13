@@ -18,6 +18,7 @@ package com.bidesh.OJ.Gusion.repository;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -42,4 +43,5 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
            "GROUP BY u.email " +
            "ORDER BY COUNT(DISTINCT s.problem.id) DESC")
     List<LeaderboardEntry> findTopUsers();
+    Optional<Submission> findFirstByProblemIdAndUserIdOrderBySubmittedAtDesc(Long problemId, UUID userId);
 }
