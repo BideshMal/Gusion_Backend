@@ -52,4 +52,24 @@ public class SubmissionController {
         // ✅ CORRECT: Delegating to Service
         return ResponseEntity.ok(submissionService.getUserHistory(userId));
     }
+    // Inside SubmissionController.java
+
+@GetMapping("/problem/{problemId}/last-code")
+public ResponseEntity<String> getLastSavedCode(
+        @PathVariable Long problemId,
+        @RequestHeader(value = "X-User-Id", required = false) UUID userId) {
+    
+    // Fallback for testing without Auth token (matching your submit logic)
+    if (userId == null) {
+        userId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    }
+    
+    String savedCode = submissionService.getLastSavedCode(problemId, userId);
+    
+    // Return the code, or a 204 No Content if they've never submitted before
+    if (savedCode.isEmpty()) {
+        return ResponseEntity.noContent().build();
+    }
+    return ResponseEntity.ok(savedCode);
+}
 }
