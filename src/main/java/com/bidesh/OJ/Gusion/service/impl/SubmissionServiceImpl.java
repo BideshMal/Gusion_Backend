@@ -142,4 +142,12 @@ public class SubmissionServiceImpl implements SubmissionService {
                 ))
                 .collect(Collectors.toList());
     }
+    // Inside SubmissionServiceImpl.java
+
+@Override
+public String getLastSavedCode(Long problemId, UUID userId) {
+    return submissionRepository.findFirstByProblemIdAndUserIdOrderBySubmittedAtDesc(problemId, userId)
+            .map(Submission::getCode) // If found, return the code
+            .orElse(""); // If no previous submission, return an empty string
+}
 }
