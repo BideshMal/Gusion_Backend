@@ -1,6 +1,4 @@
-Here is the comprehensive, professional `README.md` for your hackathon project. It is structured to highlight your engineering decisions and the technical complexity of the **AI Mentor** system.
 
----
 
 # 🛡️ Gusion: The AI-Powered "Mentor" Online Judge
 
