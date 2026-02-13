@@ -12,4 +12,5 @@ public interface SubmissionService {
     SubmitResponse submit(UUID userId, SubmitRequest request);
     StatusResponse getStatus(UUID submissionId);
     List<HistoryResponse> getUserHistory(UUID userId);
+    String getLastSavedCode(Long problemId, UUID userId);
 }
