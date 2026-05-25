@@ -12,6 +12,7 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addMapping("/**")
                 .allowedOrigins(
                     "https://conceptual-datha-personal00abhi-6944df08.koyeb.app", // Your Live App
+                    "https://gus-front.vercel.app", 
                     "http://localhost:8081", // Local Vite
                     "http://localhost:5173"  // Default Vite
                 )
